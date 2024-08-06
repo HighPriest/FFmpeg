@@ -2004,6 +2004,9 @@ static unsigned int validate_codec_tag(const AVCodecTag *const *tags,
                 return codec_tags->tag;
             codec_tags++;
         }
+        if(tag == MKTAG('t','m','c','d')) {
+            return tag;
+        }
     }
     return 0;
 }
