@@ -1,0 +1,64 @@
+name: Build FFmpeg Master (Windows Native)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout FFmpeg master
+        uses: actions/checkout@v4
+        with:
+          repository: HighPriest/FFmpeg
+          ref: master
+          path: ffmpeg-source
+
+      - name: Setup MSYS2 with MinGW-w64 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-yasm
+            subversion
+            git
+            make
+            pkg-config
+
+      - name: Build FFmpeg natively
+        shell: msys2 {0}
+        run: |
+          export TERM=xterm   # Fix: TERM environment variable not set
+          cd "$GITHUB_WORKSPACE/ffmpeg-source"
+          ./configure \
+            --prefix="$GITHUB_WORKSPACE/ffmpeg-install" \
+            --enable-static \
+            --disable-shared \
+            --enable-gpl \
+            --disable-doc
+          make -j$(nproc)
+          make install
+
+      - name: Verify binaries
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\ffmpeg-install\bin"
+
+      - name: Upload ffmpeg.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-win64
+          path: ${{ github.workspace }}\ffmpeg-install\bin\ffmpeg.exe
+
+      - name: Upload ffprobe.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffprobe-win64
+          path: ${{ github.workspace }}\ffmpeg-install\bin\ffprobe.exe
